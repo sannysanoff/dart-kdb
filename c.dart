@@ -227,7 +227,7 @@ class c {
     try {
       maybeVersion = await i.readByte();
     } catch (e) {
-      close();
+      await close();
       B = new ByteData(1 + ns(usernamepassword));
       await io(await Socket.connect(host, port));
       J = 0;
@@ -236,7 +236,7 @@ class c {
       try {
         maybeVersion = await i.readByte();
       } catch (e) {
-        close();
+        await close();
         throw new KException("access");
       }
     }
@@ -802,9 +802,9 @@ class c {
     return execAny(byteData);
   }
 
-  void close() {
+  close() async {
     if (null != x) {
-      x.close();
+      await x.close();
       x = null;
     }
     i = null;

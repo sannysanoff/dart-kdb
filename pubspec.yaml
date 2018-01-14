@@ -1,6 +1,6 @@
 name: kdb
 description: KDB+ (kx.com) driver
-version: 0.1
+version: 0.1.0
 homepage: https://github.com/sannysanoff/dart-kdb
 author: Sanny Sanoff <san@sysdate.com>
 
