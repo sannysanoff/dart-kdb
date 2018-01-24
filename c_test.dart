@@ -1,4 +1,4 @@
-import "c.dart";
+import "package:kdb/c.dart";
 import "package:test/test.dart";
 import 'package:collection/collection.dart';
 
@@ -117,7 +117,7 @@ void main() {
     try {
       await conn.exec("'exception1");
       expect(false, equals(true));
-    } on KException catch (e) {
+    } on KException {
       expect(true, equals(true));
     } catch(e2) {
       expect(false, equals(true));

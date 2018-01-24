@@ -7,7 +7,9 @@ import "dart:io";
 class KException implements Exception {
   final String message;
 
-  const KException([this.message = ""]);
+  KException([this.message = ""]) {
+    print("New KException: $message");
+  }
 
   @override
   String toString() {
@@ -150,21 +152,26 @@ class DataInputStream {
   Future<ByteData> readBytes(int nbytes) async {
     await ensure(nbytes);
     ByteData retval = new ByteData(nbytes);
-    var ifirst = input[0];
-    if (ifirst.length >= nbytes) {
-      for (int q = 0; q < nbytes; q++) {
-        var z = ifirst[q];
-        retval.setUint8(q, z);
-      }
-      nInput -= nbytes;
-      input[0] = ifirst.sublist(nbytes, nbytes + ifirst.length - nbytes);
-      removeEmpty();
-    } else {
-      for (int q = 0; q < nbytes; q++) {
-        nInput--;
-        var z = ifirst.removeAt(0);
+    int destix = 0;
+    while (true) {
+      var ifirst = input[0];
+      if (ifirst.length >= nbytes) {
+        for (int q = 0; q < nbytes; q++) {
+          retval.setUint8(q + destix, ifirst[q]);
+        }
+        nInput -= nbytes;
+        input[0] = ifirst.sublist(nbytes, nbytes + ifirst.length - nbytes);
         removeEmpty();
-        retval.setUint8(q, z);
+        break;
+      } else {
+        int lim = ifirst.length;
+        for (int q = 0; q < lim; q++) {
+          retval.setUint8(destix + q, ifirst[q]);
+        }
+        nbytes -= lim;
+        destix += lim;
+        nInput -= lim;
+        input.removeAt(0);
       }
     }
     return retval;
@@ -594,7 +601,7 @@ class c {
   DateTime rdate2() {
     double f = rdouble();
     return new DateTime.fromMillisecondsSinceEpoch(
-        f.isNaN ? nj : (k + (8.64e7 * f).round()),
+        f.isNaN ? 0 : (k + (8.64e7 * f).round()),
         isUtc: true);
   }
 
@@ -771,6 +778,37 @@ class c {
     return rany(); // deserialize the message
   }
 
+  uncompress() {
+    int n = 0, r = 0, f = 0, s = 8, p = s;
+    int i = 0;
+    var dst = new ByteData(rint());
+    int d = j;
+    var aa = new List<int>(256);
+    while (s < dst.lengthInBytes) {
+      if (i == 0) {
+        f = b.getUint8(d++);
+        i = 1;
+      }
+      if ((f & i) != 0) {
+        r = aa[b.getUint8(d++)];
+        dst.setUint8(s++, dst.getUint8(r++));
+        dst.setUint8(s++, dst.getUint8(r++));
+        n = b.getUint8(d++);
+        for (int m = 0; m < n; m++) dst.setUint8(s + m, dst.getUint8(r + m));
+      } else {
+        dst.setUint8(s++, b.getUint8(d++));
+      }
+      while (p < s - 1)
+        aa[dst.getUint8(p) ^ dst.getUint8(p + 1)] = p++;
+      if ((f & i) != 0) p = s += n;
+      i *= 2;
+      if (i == 256)
+        i = 0;
+    }
+    b = dst;
+    j = 8;
+  }
+
   Future<dynamic> parseResponse() async {
     b = await i.readBytes(8);
     a = b.getInt8(0) == 1; // endianness of the msg
@@ -778,9 +816,15 @@ class c {
       sync++; // an incoming sync message means the remote will expect a response message
     j = 4;
     var ilen = rint();
+    var compressed = b.getInt8(2) == 1;
     b = await i.readBytes(ilen - 8);
     j = 0;
-    return deserializeAny();
+    if (compressed) {
+      uncompress();
+      j = 8;
+    }
+    var retval = deserializeAny();
+    return retval;
   }
 
   Future<dynamic> execAny(dynamic list) async {
@@ -856,7 +900,7 @@ class c {
 
   void wdatetime(DateTime dt) {
     int j = dt.millisecondsSinceEpoch;
-    wdouble(j == nj ? nf : (j - k) / 8.64e7);
+    wdouble(j == 0 ? nf : (j - k) / 8.64e7);
   }
 
   void wtimespan(Timespan t) {
